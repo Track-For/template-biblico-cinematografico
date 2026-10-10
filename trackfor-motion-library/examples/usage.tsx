@@ -1,0 +1,3 @@
+import { TextReveal, FadeUp, ParallaxImage, PinnedStory } from '../src/effects/ScrollEffects';
+import { MagneticButton } from '../src/effects/InteractiveEffects';
+export function Example(){return <main><TextReveal as="h1">Sua marca merece ser percebida.</TextReveal><FadeUp><p>Experiências feitas para gerar confiança.</p></FadeUp><ParallaxImage src="/foto.jpg" alt="Projeto"/><MagneticButton>Solicitar proposta</MagneticButton><PinnedStory steps={[{title:'Descobrir',description:'Entender a marca'},{title:'Construir',description:'Criar experiência'},{title:'Converter',description:'Gerar oportunidades'}]}/></main>}
