@@ -22,6 +22,7 @@ export type Chapter = {
   effect: ChapterEffect;
   scrollDistance: number;
   mobileHeight: number;
+  exitTransition?: "portal";
   playbackStart?: number;
   playbackEnd?: number;
   quote?: string;
@@ -60,6 +61,7 @@ export const chapters: Chapter[] = [
     effect: "awakening",
     scrollDistance: 2100,
     mobileHeight: 235,
+    exitTransition: "portal",
     playbackEnd: 13.8,
   },
   {

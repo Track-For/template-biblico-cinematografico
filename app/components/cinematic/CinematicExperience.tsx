@@ -2,8 +2,8 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import type { CSSProperties, RefObject } from "react";
 import {
-  CSSProperties,
   useCallback,
   useEffect,
   useLayoutEffect,
@@ -20,6 +20,69 @@ const VideoDistortionPlane = dynamic(() => import("./VideoDistortionPlane"), {
 });
 
 const originalFilm = "/videos/Video biblico.mp4";
+
+const portalStainPath = [
+  "M 0 -104",
+  "C 24 -117 40 -88 63 -83",
+  "C 87 -76 79 -48 101 -31",
+  "C 113 -9 91 9 105 31",
+  "C 98 53 73 55 66 79",
+  "C 45 93 25 82 6 105",
+  "C -17 112 -33 88 -56 94",
+  "C -78 79 -68 54 -94 43",
+  "C -108 23 -91 4 -106 -18",
+  "C -99 -42 -75 -45 -79 -70",
+  "C -61 -89 -37 -80 -21 -104",
+  "C -13 -111 -7 -108 0 -104 Z",
+].join(" ");
+
+const portalStainClipPath = [
+  "M .5 .2608",
+  "C .5348 .2309 .558 .2976 .59135 .3091",
+  "C .62615 .3252 .61455 .3896 .64645 .4287",
+  "C .66385 .4793 .63195 .5207 .65225 .5713",
+  "C .6421 .6219 .60585 .6265 .5957 .6817",
+  "C .56525 .7139 .53625 .6886 .5087 .7415",
+  "C .47535 .7576 .45215 .7024 .4188 .7162",
+  "C .3869 .6817 .4014 .6242 .3637 .5989",
+  "C .3434 .5529 .36805 .5092 .3463 .4586",
+  "C .35645 .4034 .39125 .3965 .38545 .339",
+  "C .41155 .2953 .44635 .316 .46955 .2608",
+  "C .48115 .2447 .48985 .2516 .5 .2608 Z",
+].join(" ");
+
+const portalStainClipPathCompact = [
+  "M .5 .37",
+  "C .554 .35375 .59 .39 .64175 .39625",
+  "C .69575 .405 .67775 .44 .72725 .46125",
+  "C .75425 .48875 .70475 .51125 .73625 .53875",
+  "C .7205 .56625 .66425 .56875 .6485 .59875",
+  "C .60125 .61625 .55625 .6025 .5135 .63125",
+  "C .46175 .64 .42575 .61 .374 .6175",
+  "C .3245 .59875 .347 .5675 .2885 .55375",
+  "C .257 .52875 .29525 .505 .2615 .4775",
+  "C .27725 .4475 .33125 .44375 .32225 .4125",
+  "C .36275 .38875 .41675 .4 .45275 .37",
+  "C .47075 .36125 .48425 .365 .5 .37 Z",
+].join(" ");
+
+const portalFragments = Array.from({ length: 64 }, (_, index) => {
+  const angle = (index / 64) * Math.PI * 2;
+  const contour =
+    1 +
+    Math.sin(angle * 3 + 0.4) * 0.12 +
+    Math.cos(angle * 5 - 0.7) * 0.075 +
+    Math.sin(angle * 7) * 0.035;
+  const radius = (91 + ((index * 29) % 35)) * contour;
+  const size = 0.58 + ((index * 17) % 10) * 0.16;
+
+  return {
+    x: Math.cos(angle) * radius,
+    y: Math.sin(angle) * radius * 0.94,
+    size,
+    rotation: (index * 47) % 180,
+  };
+});
 
 function formatTime(seconds: number) {
   const minutes = Math.floor(seconds / 60);
@@ -176,7 +239,142 @@ type ChapterSectionProps = {
   activeIndex: number;
   setActiveIndex: (index: number) => void;
   profile: ReturnType<typeof useMotionProfile>;
+  portalTransitionRef: RefObject<HTMLDivElement | null>;
 };
+
+type PortalTransitionOverlayProps = {
+  compact: boolean;
+  target: Chapter;
+  transitionRef: RefObject<HTMLDivElement | null>;
+};
+
+function PortalTransitionOverlay({
+  compact,
+  target,
+  transitionRef,
+}: PortalTransitionOverlayProps) {
+  const width = compact ? 900 : 1600;
+  const height = compact ? 1600 : 900;
+  const warpId = "journey-portal-stain-warp";
+  const glowId = "journey-portal-stain-glow";
+  const clipId = "journey-portal-stain-clip";
+  const compactClipId = "journey-portal-stain-clip-compact";
+
+  return (
+    <div
+      ref={transitionRef}
+      className={`chapter-transition chapter-transition--portal${compact ? " chapter-transition--portal-compact" : ""}`}
+      aria-hidden="true"
+    >
+      <div className="portal-transition__window">
+        <Image
+          className="portal-transition__incoming"
+          src={target.poster}
+          alt=""
+          fill
+          sizes="100vw"
+        />
+      </div>
+      <svg
+        className="portal-transition__svg"
+        viewBox={`0 0 ${width} ${height}`}
+        preserveAspectRatio="none"
+        focusable="false"
+      >
+        <defs>
+          <clipPath id={clipId} clipPathUnits="objectBoundingBox">
+            <path d={portalStainClipPath} />
+          </clipPath>
+          <clipPath id={compactClipId} clipPathUnits="objectBoundingBox">
+            <path d={portalStainClipPathCompact} />
+          </clipPath>
+          <filter
+            id={warpId}
+            x="-35%"
+            y="-35%"
+            width="170%"
+            height="170%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feTurbulence
+              type="fractalNoise"
+              baseFrequency={compact ? "0.018 0.03" : "0.012 0.036"}
+              numOctaves="3"
+              seed="19"
+              result="portal-noise"
+            />
+            <feDisplacementMap
+              in="SourceGraphic"
+              in2="portal-noise"
+              scale={compact ? 26 : 48}
+              xChannelSelector="R"
+              yChannelSelector="B"
+            />
+          </filter>
+          <filter
+            id={glowId}
+            x="-60%"
+            y="-60%"
+            width="220%"
+            height="220%"
+            colorInterpolationFilters="sRGB"
+          >
+            <feGaussianBlur
+              stdDeviation={compact ? 9 : 14}
+              result="portal-blur"
+            />
+            <feMerge>
+              <feMergeNode in="portal-blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+
+        <g className="portal-transition__glow" filter={`url(#${glowId})`}>
+          <path className="portal-transition__bloom" d={portalStainPath} />
+        </g>
+        <g className="portal-transition__edge" filter={`url(#${warpId})`}>
+          <path
+            className="portal-transition__rim portal-transition__rim--outer"
+            d={portalStainPath}
+          />
+          <path
+            className="portal-transition__rim portal-transition__rim--inner"
+            d={portalStainPath}
+          />
+        </g>
+
+        <g className="portal-transition__fragments portal-transition__fragments--far">
+          {portalFragments
+            .filter((_, fragmentIndex) => fragmentIndex % 2 === 0)
+            .map((fragment, fragmentIndex) => (
+              <circle
+                key={`far-${fragmentIndex}`}
+                className="portal-transition__fragment portal-transition__fragment--far"
+                cx={fragment.x}
+                cy={fragment.y}
+                r={fragment.size * 0.48}
+              />
+            ))}
+        </g>
+        <g className="portal-transition__fragments portal-transition__fragments--near">
+          {portalFragments.map((fragment, fragmentIndex) => (
+            <rect
+              key={`near-${fragmentIndex}`}
+              className="portal-transition__fragment"
+              x={fragment.x - fragment.size / 2}
+              y={fragment.y - fragment.size / 2}
+              width={fragment.size}
+              height={fragment.size * 0.52}
+              rx={fragment.size * 0.14}
+              transform={`rotate(${fragment.rotation} ${fragment.x} ${fragment.y})`}
+            />
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+}
 
 function ChapterSection({
   chapter,
@@ -185,6 +383,7 @@ function ChapterSection({
   activeIndex,
   setActiveIndex,
   profile,
+  portalTransitionRef,
 }: ChapterSectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -196,9 +395,12 @@ function ChapterSection({
   const progressRef = useRef(0);
   const seekFrameRef = useRef<number | null>(null);
   const [nearViewport, setNearViewport] = useState(index === 0);
-  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null);
+  const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(
+    null,
+  );
   const compact = profile.compact || profile.coarse;
   const source = compact ? chapter.mobileVideo : chapter.desktopVideo;
+  const hasPortalExit = chapter.exitTransition === "portal";
   const distortionActive =
     chapter.effect === "choice" &&
     activeIndex === index &&
@@ -230,6 +432,10 @@ function ChapterSection({
     const narration = narrationRef.current;
     const quote = quoteRef.current;
     const entranceTransition = entranceTransitionRef.current;
+    const portalTransition = hasPortalExit ? portalTransitionRef.current : null;
+    const portalTargetSection = hasPortalExit
+      ? document.getElementById(chapters[index + 1]?.id ?? "")
+      : null;
 
     if (
       !entered ||
@@ -249,14 +455,40 @@ function ChapterSection({
       const maskZoom = entranceTransition?.querySelector<SVGGElement>(
         ".chapter-transition__mask-zoom",
       );
-      const maskEnd = index > 0 ? (compact ? 0.22 : 0.18) : 0;
+      const hasEntranceMask = index > 0 && chapter.id !== "escolha";
+      const maskEnd = hasEntranceMask ? (compact ? 0.22 : 0.18) : 0;
       const maskTarget = compact ? { x: 450, y: 800 } : { x: 800, y: 450 };
+      const portalCenter = maskTarget;
+      const portalStart = compact ? 0.67 : 0.72;
+      const portalMaxRadius =
+        Math.hypot(maskTarget.x, maskTarget.y) + (compact ? 90 : 140);
+      const portalWindow = portalTransition?.querySelector<HTMLDivElement>(
+        ".portal-transition__window",
+      );
+      const portalImage = portalTransition?.querySelector<HTMLImageElement>(
+        ".portal-transition__incoming",
+      );
+      const portalGlow = portalTransition?.querySelector<SVGGElement>(
+        ".portal-transition__glow",
+      );
+      const portalEdge = portalTransition?.querySelector<SVGGElement>(
+        ".portal-transition__edge",
+      );
+      const portalFragmentsNear = portalTransition?.querySelector<SVGGElement>(
+        ".portal-transition__fragments--near",
+      );
+      const portalFragmentsFar = portalTransition?.querySelector<SVGGElement>(
+        ".portal-transition__fragments--far",
+      );
 
       const renderFrame = (progress: number) => {
-        const chapterProgress =
+        const timelineProgress =
           maskEnd > 0
             ? gsap.utils.clamp(0, 1, (progress - maskEnd) / (1 - maskEnd))
             : progress;
+        const chapterProgress = hasPortalExit
+          ? gsap.utils.clamp(0, 1, timelineProgress / portalStart)
+          : timelineProgress;
 
         progressRef.current = chapterProgress;
         stage.style.setProperty(
@@ -290,7 +522,11 @@ function ChapterSection({
           });
         }
 
-        const titleIn = gsap.utils.clamp(0, 1, (chapterProgress - 0.015) / 0.08);
+        const titleIn = gsap.utils.clamp(
+          0,
+          1,
+          (chapterProgress - 0.015) / 0.08,
+        );
         const titleOut =
           1 - gsap.utils.clamp(0, 1, (chapterProgress - 0.38) / 0.15);
         const narrationIn = gsap.utils.clamp(
@@ -345,6 +581,76 @@ function ChapterSection({
             },
           });
         }
+
+        if (
+          hasPortalExit &&
+          portalTransition &&
+          portalWindow &&
+          portalImage &&
+          portalGlow &&
+          portalEdge &&
+          portalFragmentsNear &&
+          portalFragmentsFar
+        ) {
+          const portalProgress = gsap.utils.clamp(
+            0,
+            1,
+            (timelineProgress - portalStart) / (1 - portalStart),
+          );
+          const opening = gsap.utils.clamp(
+            0,
+            1,
+            (portalProgress - 0.035) / 0.91,
+          );
+          const easedOpening = opening * opening * (3 - 2 * opening);
+          const radius = 3 + portalMaxRadius * easedOpening;
+          const edgeIn = gsap.utils.clamp(0, 1, portalProgress / 0.11);
+          const edgeOut =
+            1 - gsap.utils.clamp(0, 1, (portalProgress - 0.78) / 0.2);
+          const edgeOpacity = edgeIn * edgeOut;
+          const nearScale = Math.max(0.035, radius / 102);
+          const farScale = Math.max(0.035, (radius + 32 * edgeIn) / 108);
+          const stainScale = Math.max(0.035, radius / 104);
+          const windowScale = 0.025 + easedOpening * (compact ? 5.35 : 5);
+
+          gsap.set(portalTransition, {
+            autoAlpha: portalProgress > 0.001 ? 1 : 0,
+          });
+          gsap.set(portalWindow, {
+            scale: windowScale,
+            rotation: easedOpening * -0.6,
+            transformOrigin: "center center",
+          });
+          gsap.set(portalImage, {
+            scale: (1.065 - easedOpening * 0.065) / Math.max(windowScale, 0.04),
+            rotation: easedOpening * 0.6,
+            transformOrigin: "center center",
+          });
+          gsap.set(portalGlow, {
+            attr: {
+              transform: `translate(${portalCenter.x} ${portalCenter.y}) rotate(${portalProgress * -2.5}) scale(${stainScale})`,
+            },
+            opacity: edgeOpacity * 0.82,
+          });
+          gsap.set(portalEdge, {
+            attr: {
+              transform: `translate(${portalCenter.x} ${portalCenter.y}) rotate(${portalProgress * -2.5}) scale(${stainScale})`,
+            },
+            opacity: edgeOpacity,
+          });
+          gsap.set(portalFragmentsNear, {
+            attr: {
+              transform: `translate(${portalCenter.x} ${portalCenter.y}) rotate(${portalProgress * 18}) scale(${nearScale})`,
+            },
+            opacity: edgeOpacity * 0.92,
+          });
+          gsap.set(portalFragmentsFar, {
+            attr: {
+              transform: `translate(${portalCenter.x} ${portalCenter.y}) rotate(${-portalProgress * 12}) scale(${farScale})`,
+            },
+            opacity: edgeOpacity * 0.52,
+          });
+        }
       };
 
       const animatedElements = [
@@ -353,6 +659,13 @@ function ChapterSection({
         quote,
         entranceTransition,
         maskZoom,
+        portalTransition,
+        portalWindow,
+        portalImage,
+        portalGlow,
+        portalEdge,
+        portalFragmentsNear,
+        portalFragmentsFar,
       ].filter(Boolean) as Array<HTMLElement | SVGGElement>;
 
       gsap.set(animatedElements, { willChange: "transform,opacity" });
@@ -377,6 +690,26 @@ function ChapterSection({
           onEnterBack: () => setActiveIndex(index),
         },
       });
+
+      if (hasPortalExit && portalTransition && portalTargetSection) {
+        ScrollTrigger.create({
+          id: `portal-handoff-${chapter.id}`,
+          trigger: portalTargetSection,
+          start: "top bottom",
+          end: "top top",
+          onEnter: () => gsap.set(portalTransition, { autoAlpha: 1 }),
+          onUpdate: (self) => {
+            if (self.progress > 0) {
+              gsap.set(portalTransition, {
+                autoAlpha: self.progress >= 0.998 ? 0 : 1,
+              });
+            }
+          },
+          onLeave: () => gsap.set(portalTransition, { autoAlpha: 0 }),
+          onEnterBack: () => gsap.set(portalTransition, { autoAlpha: 1 }),
+          onLeaveBack: () => gsap.set(portalTransition, { autoAlpha: 1 }),
+        });
+      }
     }, section);
 
     return () => {
@@ -386,7 +719,17 @@ function ChapterSection({
       }
       context.revert();
     };
-  }, [chapter, compact, entered, index, profile.ready, profile.reduced, setActiveIndex]);
+  }, [
+    chapter,
+    compact,
+    entered,
+    hasPortalExit,
+    index,
+    portalTransitionRef,
+    profile.ready,
+    profile.reduced,
+    setActiveIndex,
+  ]);
 
   const style = {
     "--mobile-height": `${chapter.mobileHeight}svh`,
@@ -404,10 +747,7 @@ function ChapterSection({
       style={style}
       aria-labelledby={`${chapter.id}-title`}
     >
-      <div
-        ref={stageRef}
-        className="chapter__stage"
-      >
+      <div ref={stageRef} className="chapter__stage">
         <video
           ref={videoRef}
           className="chapter__video"
@@ -447,7 +787,7 @@ function ChapterSection({
             <cite>{chapter.citation}</cite>
           </blockquote>
         ) : null}
-        {index > 0 ? (
+        {index > 0 && chapter.id !== "escolha" ? (
           <div
             ref={entranceTransitionRef}
             className="chapter-transition chapter-transition--entrance-mask"
@@ -523,11 +863,23 @@ function FilmPlayer({ open, onClose }: FilmPlayerProps) {
   if (!open) return null;
 
   return (
-    <div className="film-player" role="dialog" aria-modal="true" aria-label="Filme completo">
+    <div
+      className="film-player"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Filme completo"
+    >
       <button ref={closeRef} type="button" onClick={onClose}>
         Fechar filme
       </button>
-      <video src={originalFilm} controls playsInline preload="metadata" autoPlay muted>
+      <video
+        src={originalFilm}
+        controls
+        playsInline
+        preload="metadata"
+        autoPlay
+        muted
+      >
         Seu navegador não oferece suporte à reprodução de vídeo.
       </video>
     </div>
@@ -540,7 +892,9 @@ export function CinematicExperience() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [filmOpen, setFilmOpen] = useState(false);
   const skipTargetRef = useRef<string | null>(null);
+  const portalTransitionRef = useRef<HTMLDivElement>(null);
   const profile = useMotionProfile();
+  const portalTarget = chapters.find((chapter) => chapter.id === "escolha");
 
   const navigate = useCallback(
     (id: string) => {
@@ -617,6 +971,13 @@ export function CinematicExperience() {
             onNavigate={navigate}
           />
         ) : null}
+        {entered && portalTarget ? (
+          <PortalTransitionOverlay
+            compact={profile.compact || profile.coarse}
+            target={portalTarget}
+            transitionRef={portalTransitionRef}
+          />
+        ) : null}
         <main>
           {chapters.map((chapter, index) => (
             <ChapterSection
@@ -627,11 +988,14 @@ export function CinematicExperience() {
               activeIndex={activeIndex}
               setActiveIndex={setActiveIndex}
               profile={profile}
+              portalTransitionRef={portalTransitionRef}
             />
           ))}
           <section className="finale" aria-labelledby="finale-title">
             <div>
-              <p className="finale__prelude">A travessia continua fora da tela</p>
+              <p className="finale__prelude">
+                A travessia continua fora da tela
+              </p>
               <h2 id="finale-title">O que você escolhe alimentar?</h2>
               <p>
                 Reveja a obra em seu ritmo ou retorne ao início para atravessar
